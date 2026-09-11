@@ -1,0 +1,135 @@
+\documentclass{article}
+\usepackage{amsmath, amssymb, amsthm}
+\usepackage{geometry}
+\geometry{margin=1in}
+
+\title{Asymptotic Variance in Continuous-Time Markov Chains (CTMC)}
+\author{Pedagogical Peer Instruction}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\section{Introduction and Physical Intuition}
+
+In stochastic processes, moving from discrete-time Markov chains (DTMCs) to continuous-time Markov chains (CTMCs) represents a transition from discrete steps to a continuous flow. This transition simplifies the mathematical structure of long-term fluctuations.
+
+To build physical intuition, consider a traveler wandering through a house with several rooms. Each room $x \in S$ has a specific room temperature $f(x)$. 
+\begin{itemize}
+    \item \textbf{Discrete-Time (DTMC):} The traveler teleports to a new room once every minute (discrete steps).
+    \item \textbf{Continuous-Time (CTMC):} The traveler stays in each room $x$ for a continuous, exponentially distributed duration of time with rate $q(x)$ before moving to another room.
+\end{itemize}
+
+Over a very long journey, the traveler spends a fraction of their time in room $x$ given by the stationary probability $\pi_x$. The long-run average temperature they experience is the \textbf{stationary mean}:
+\begin{equation}
+    \bar{f} = \mathbb{E}_\pi[f(X)] = \sum_{x \in S} \pi_x f(x)
+\end{equation}
+
+\section{The Value Function and the Poisson Equation}
+
+To understand the fluctuations around the stationary mean, we define the \textbf{value function} $V(x)$ (also called the expected head-start or deviation function). This function answers the question: \textit{``If the traveler starts in room $x$ today, what is the net cumulative temperature difference they will experience over their entire future journey compared to someone who starts in the long-run average condition?''}
+
+Formally, the value function $V: S \to \mathbb{R}$ is defined as:
+\begin{equation}
+    V(x) = \int_0^\infty \mathbb{E}[ f(X_t) - \bar{f} \mid X_0 = x ] \, dt
+\end{equation}
+
+In a CTMC, the transition rates are governed by the infinitesimal generator matrix $Q$, where $Q_{xy}$ is the transition rate from state $x$ to state $y$ for $x \neq y$, and $Q_{xx} = -q(x) = -\sum_{y \neq x} Q_{xy}$. By the properties of the generator, the expected rate of change of our future head-start must perfectly balance the instantaneous temperature deviation:
+\begin{equation}
+    Q V(x) = -(f(x) - \bar{f})
+\end{equation}
+In vector-matrix form, this is the \textbf{continuous-time Poisson equation}:
+\begin{equation}
+    -Q \mathbf{V} = \mathbf{f} - \bar{f}\mathbf{1}
+\end{equation}
+
+\begin{proof}[Proof of the Poisson Equation]
+By definition of the generator matrix $Q$ acting on the function $V$:
+\begin{equation}
+    Q V(x) = \lim_{h \to 0^+} \frac{\mathbb{E}[V(X_h) \mid X_0 = x] - V(x)}{h}
+\end{equation}
+Substituting the definition of $V(x)$:
+\begin{align}
+    \mathbb{E}[V(X_h) \mid X_0 = x] &= \int_0^\infty \mathbb{E}[ f(X_{t+h}) - \bar{f} \mid X_0 = x ] \, dt \nonumber \\
+    &= \int_h^\infty \mathbb{E}[ f(X_s) - \bar{f} \mid X_0 = x ] \, ds
+\end{align}
+Subtracting $V(x)$ from both sides:
+\begin{equation}
+    \mathbb{E}[V(X_h) \mid X_0 = x] - V(x) = -\int_0^h \mathbb{E}[ f(X_s) - \bar{f} \mid X_0 = x ] \, ds
+\end{equation}
+Dividing by $h$ and taking the limit as $h \to 0^+$:
+\begin{align}
+    Q V(x) &= \lim_{h \to 0^+} \frac{-1}{h} \int_0^h \mathbb{E}[ f(X_s) - \bar{f} \mid X_0 = x ] \, ds \nonumber \\
+    &= -(f(x) - \bar{f})
+\end{align}
+where the last equality follows from the Fundamental Theorem of Calculus since the integrand is continuous.
+\end{proof}
+
+\section{Asymptotic Variance $\kappa(f)$}
+
+If the traveler journeys for a long duration $T$, the total accumulated temperature they experience is the integral:
+\begin{equation}
+    I_T = \int_0^T f(X_s) \, ds
+\end{equation}
+By the Ergodic Theorem, $I_T/T \to \bar{f}$ almost surely as $T \to \infty$. By the Central Limit Theorem (CLT) for continuous-time processes, the scaled fluctuations converge in distribution:
+\begin{equation}
+    \frac{I_T - T\bar{f}}{\sqrt{T}} \implies \mathcal{N}(0, \kappa(f)) \quad \text{as } T \to \infty
+\end{equation}
+The parameter $\kappa(f)$ is the \textbf{asymptotic variance} of the reward function on the CTMC:
+\begin{equation}
+    \kappa(f) = \lim_{T \to \infty} \frac{1}{T} \text{Var}\left( \int_0^T f(X_s) \, ds \right)
+\end{equation}
+
+Asymptotic variance is different from the stationary variance $\text{Var}_\pi(f(X)) = \mathbb{E}_\pi[(f(X) - \bar{f})^2]$. It captures the temporal correlations (or ``stickiness'') of the states. Mathematically, it integrates all autocovariances over time:
+\begin{equation}
+    \kappa(f) = 2 \int_0^\infty \text{Cov}_\pi(f(X_0), f(X_t)) \, dt
+\end{equation}
+
+\section{Derivation of $\kappa(f)$ via the Poisson Equation}
+
+Let $Z_t = f(X_t) - \bar{f}$ be the centered reward process. Assuming the process starts in steady state ($X_0 \sim \pi$), we have:
+\begin{align}
+    \text{Var}\left( \int_0^T Z_s \, ds \right) &= \mathbb{E}_\pi\left[ \left( \int_0^T Z_s \, ds \right)^2 \right] \nonumber \\
+    &= \int_0^T \int_0^T \mathbb{E}_\pi [ Z_u Z_v ] \, du \, dv \nonumber \\
+    &= 2 \int_0^T \int_0^v \mathbb{E}_\pi [ Z_u Z_v ] \, du \, dv
+\end{align}
+By stationarity, $\mathbb{E}_\pi [ Z_u Z_v ] = \mathbb{E}_\pi [ Z_0 Z_{\lvert v-u \rvert} ]$. Changing variables using $\tau = v-u$:
+\begin{equation}
+    \text{Var}\left( \int_0^T Z_s \, ds \right) = 2 \int_0^T (T - \tau) \mathbb{E}_\pi [ Z_0 Z_\tau ] \, d\tau
+\end{equation}
+Dividing by $T$ and taking the limit as $T \to \infty$ gives the asymptotic variance:
+\begin{align}
+    \kappa(f) &= \lim_{T \to \infty} \frac{2}{T} \int_0^T (T - \tau) \mathbb{E}_\pi [ Z_0 Z_\tau ] \, d\tau \nonumber \\
+    &= 2 \int_0^\infty \mathbb{E}_\pi [ Z_0 Z_\tau ] \, d\tau
+\end{align}
+Using the law of total expectation, we can express the integrand as:
+\begin{equation}
+    \mathbb{E}_\pi [ Z_0 Z_\tau ] = \mathbb{E}_\pi \left[ Z_0 \mathbb{E}[ Z_\tau \mid X_0 ] \right]
+\end{equation}
+Substituting this back into our expression for $\kappa(f)$:
+\begin{align}
+    \kappa(f) &= 2 \int_0^\infty \mathbb{E}_\pi \left[ (f(X_0) - \bar{f}) \, \mathbb{E}[ f(X_\tau) - \bar{f} \mid X_0 ] \right] \, d\tau \nonumber \\
+    &= 2 \mathbb{E}_\pi \left[ (f(X_0) - \bar{f}) \int_0^\infty \mathbb{E}[ f(X_\tau) - \bar{f} \mid X_0 ] \, d\tau \right]
+\end{align}
+Recognizing the inner integral as the value function $V(X_0)$, we obtain the elegant formula:
+\begin{equation}
+    \kappa(f) = 2 \mathbb{E}_\pi \left[ (f(X) - \bar{f}) V(X) \right]
+\end{equation}
+
+\section{The Elegant Contrast: DTMC vs. CTMC}
+
+To appreciate the simplicity of continuous time, let us compare the asymptotic variance formulas side-by-side:
+\begin{align}
+    \kappa_{\text{DTMC}}(f) &= 2 \mathbb{E}_\pi [ (f(X) - \bar{f}) V(X) ] - \mathbb{E}_\pi [ (f(X) - \bar{f})^2 ] \\
+    \kappa_{\text{CTMC}}(f) &= 2 \mathbb{E}_\pi [ (f(X) - \bar{f}) V(X) ]
+\end{align}
+
+\subsection*{Why does the negative term disappear in CTMC?}
+In discrete time, when we calculate the variance of a sum of random variables $S_n = \sum_{k=0}^{n-1} Z_k$, the diagonal covariance terms $\text{Cov}(Z_k, Z_k)$ are isolated, discrete point masses. Under steady state, each contributes $\mathbb{E}_\pi[Z_0^2]$. In the double summation, these diagonal terms are counted once, while the off-diagonal terms $\text{Cov}(Z_i, Z_j)$ are counted twice. To relate the total sum to $2 \sum_{k=0}^\infty \mathbb{E}_\pi[Z_0 Z_k]$, we must subtract the single-step variance $\mathbb{E}_\pi[Z_0^2]$ to correct for the double-counting of the diagonal.
+
+In continuous time, there is no discrete ``diagonal.'' The double integral integrates over a continuous 2D domain $[0, T] \times [0, T]$. The diagonal line $u = v$ has a Lebesgue measure of zero in $\mathbb{R}^2$. Therefore, the instantaneous variance at the points $u = v$ contributes nothing to the continuous integral! 
+
+As a result, the continuous-time asymptotic variance is mathematically cleaner, more symmetric, and does not require any discrete correction terms.
+
+\end{document}
