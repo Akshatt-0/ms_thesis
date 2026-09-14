@@ -1,0 +1,167 @@
+\documentclass[11pt]{article}
+\usepackage{amsmath, amssymb, amsthm}
+\usepackage{geometry}
+\usepackage{booktabs}
+\usepackage{float}
+\usepackage{microtype}
+\usepackage{graphicx}
+\geometry{margin=1in}
+
+\title{\textbf{Demystifying Stochastic Approximation \\ and the Euler-Maruyama Method}}
+\author{\textbf{Pedagogical Peer Instruction} \\ Sourced from Foundational Stochastic Process Theory}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+This pedagogical guide breaks down the core concepts behind Stochastic Approximation (SA) algorithms and clarifies their mathematical and intuitive connections to continuous-time dynamical systems. We explore the historical motivation for SA, present intuitive physical analogies for Robbins-Monro and Kiefer-Wolfowitz procedures, and establish a rigorous comparison with the Euler-Maruyama discretization method for Stochastic Differential Equations (SDEs). This text is written specifically for educators seeking to introduce graduate and advanced undergraduate students to the beauty of stochastic analysis without losing them in measure-theoretic weeds.
+\end{abstract}
+
+\section{Introduction: The Foggy Hill and Noisy Scales}
+
+To teach stochastic processes effectively, we must start with physical intuition before introducing formal probability equations. Let us begin with two simple analogies to understand the motivation behind Stochastic Approximation.
+
+\subsection{Analogy 1: Finding a Room's Center in the Dark}
+Imagine you are standing in a dark, drafts room. You want to find the exact spot where the temperature is perfectly comfortable ($20^\circ\text{C}$). You cannot see anything, and your handheld thermometer is extremely cheap—it fluctuates wildly by $\pm 5^\circ\text{C}$ on every reading due to thermal noise.
+If you simply walk around randomly, you will get lost. If you take huge steps every time your thermometer reads too hot or too cold, you will bounce off the walls. 
+
+What is the optimal strategy? You should take a step in the direction of the comfortable spot, but **your step size must shrink over time**. 
+\begin{itemize}
+    \item At first, your steps should be large to cover distance quickly.
+    \item As time goes on, your steps must become smaller and smaller so that the random fluctuations of your cheap thermometer get averaged out, allowing you to settle precisely on the target spot.
+\end{itemize}
+This is the core intuition of \textbf{Stochastic Approximation (SA)}.
+
+\subsection{Analogy 2: Navigating a Sailboat in a Storm}
+Consider a sailboat trying to reach a harbor. 
+\begin{itemize}
+    \item The deterministic wind pushes the boat toward the harbor (this is the drift, or the true signal).
+    \item Random, choppy waves push the boat in random directions (this is the stochastic noise).
+\end{itemize}
+If we observe the boat's position at discrete, brief time increments $\Delta t$, the change in its position is a combination of the drift (scaled by $\Delta t$) and the wave noise (scaled by $\sqrt{\Delta t}$, due to the properties of Brownian motion). How do we simulate this journey? And how does it differ from the sailboat actively filtering out the noise to find the harbor? This brings us to the mathematical intersection of the \textbf{Euler-Maruyama method} and \textbf{Stochastic Approximation}.
+
+\section{Historical Source and Motivation of SA}
+
+In classical numerical analysis, if we want to find the root of an equation $h(\theta) = 0$, and we have perfect, noise-free access to $h(\theta)$, we use **Newton's method** or standard gradient descent:
+\begin{equation}
+    \theta_{n+1} = \theta_n + \gamma h(\theta_n)
+\end{equation}
+However, in physical experiments, biological assays, reinforcement learning, and Monte Carlo simulations, we almost never have direct access to $h(\theta)$. Instead, when we probe the system at a parameter $\theta_n$, we receive a noisy observation:
+\begin{equation}
+    Y_n = h(\theta_n) + \xi_n
+\end{equation}
+where $\xi_n$ is a zero-mean random noise term. 
+
+In 1951, Herbert Robbins and Sutton Monro published a revolutionary paper titled \textit{``A Stochastic Approximation Method''}, proposing the following recursive scheme:
+\begin{equation}
+    \theta_{n+1} = \theta_n + \gamma_n (h(\theta_n) + \xi_n)
+\end{equation}
+where $\gamma_n$ is a sequence of positive step sizes (learning rates).
+
+\subsection{The Robbins-Monro Conditions}
+For the sequence $\theta_n$ to converge to the true root $\theta^*$ almost surely, Robbins and Monro proved that the step-size sequence $\gamma_n$ must satisfy two conflicting conditions:
+\begin{align}
+    \sum_{n=1}^\infty \gamma_n &= \infty \quad \text{(Infinite Exploration Capability)} \label{eq:rm_explore} \\
+    \sum_{n=1}^\infty \gamma_n^2 &< \infty \quad \text{(Finite Noise Variance / Convergence)} \label{eq:rm_filter}
+\end{align}
+
+\subsubsection*{Why are both conditions necessary?}
+\begin{itemize}
+    \item **Condition~\eqref{eq:rm_explore}** ensures that if our starting point $\theta_0$ is very far from the root $\theta^*$, the algorithm has enough energy to travel any finite distance to reach it. For example, if $\gamma_n = 1/n^2$, the total distance the algorithm can ever travel is bounded by $\sum 1/n^2 = \pi^2/6 \approx 1.64$. If the target is $5$ units away, the algorithm can never reach it!
+    \item **Condition~\eqref{eq:rm_filter}** ensures that the cumulative effect of the noise does not destabilize the algorithm. Because the noise term is multiplied by $\gamma_n$, the variance of the accumulated noise is proportional to $\sum \gamma_n^2$. If this sum is finite, the noise eventually decays to zero, and the parameters freeze at the true root.
+\end{itemize}
+A classic step size satisfying both conditions is $\gamma_n = \frac{1}{n}$.
+
+\section{The ODE Method: Connecting SA to Continuous Time}
+
+One of the most powerful and intuitive ways to analyze and teach Stochastic Approximation is the **ODE (Ordinary Differential Equation) Method**, pioneered by Lennart Ljung and Harold Kushner, and elegantly refined by Vivek Borkar.
+
+We can view the step size $\gamma_n$ as a virtual time step $\Delta t_n$. Let us write the SA update as:
+\begin{equation}
+    \frac{\theta_{n+1} - \theta_n}{\gamma_n} = h(\theta_n) + \xi_n
+\end{equation}
+As $n \to \infty$, the step size $\gamma_n \to 0$. If we interpolate the discrete sequence $\theta_n$ onto a continuous time scale $t_n = \sum_{k=0}^{n-1} \gamma_k$, the discrete difference quotient $\frac{\theta_{n+1} - \theta_n}{\gamma_n}$ starts to resemble a derivative $\dot{\theta}(t)$.
+
+Because of the noise-filtering property ($\sum \gamma_n^2 < \infty$), the high-frequency random noise $\xi_n$ averages out to zero over any local interval. As a result, the discrete SA algorithm asymptotically tracks the trajectory of the **deterministic continuous-time ODE**:
+\begin{equation}
+    \dot{\theta}(t) = h(\theta(t))
+\end{equation}
+This is a beautiful pedagogical bridge! It tells students that to understand where a complex, noisy discrete reinforcement learning algorithm will converge, they can simply analyze the stability and phase portrait of a clean, deterministic differential equation.
+
+\section{The Euler-Maruyama Method: Simulating Continuous Noise}
+
+Now, let us turn to a different but superficially similar mathematical object. In stochastic modeling, we often want to simulate a physical system that is *inherently* and *permanently* noisy, governed by a Stochastic Differential Equation (SDE):
+\begin{equation}
+    dX_t = b(X_t) \, dt + \sigma(X_t) \, dW_t
+\end{equation}
+where $b(X_t)$ represents the deterministic drift, $\sigma(X_t)$ is the noise intensity, and $W_t$ is a continuous-time Brownian motion (Wiener process).
+
+To simulate this continuous SDE on a computer, we must discretize it. The standard and most fundamental scheme to do so is the **Euler-Maruyama method** (which generalizes Euler's ODE method to stochastic integrals). 
+
+Given a time step size $\gamma > 0$, we discretize time as $t_n = n\gamma$. The Euler-Maruyama approximation $X_n \approx X(t_n)$ is:
+\begin{equation}
+    X_{n+1} = X_n + \gamma b(X_n) + \sigma(X_n) \Delta W_n
+\end{equation}
+where $\Delta W_n = W(t_{n+1}) - W(t_n)$ is the increment of Brownian motion. By the properties of Brownian motion, $\Delta W_n$ is a Gaussian random variable with mean zero and variance exactly equal to the time step $\gamma$. Therefore, we can write:
+\begin{equation}
+    \Delta W_n = \sqrt{\gamma} \, Z_{n+1}
+\end{equation}
+where $Z_{n+1} \sim \mathcal{N}(0, I)$ is a standard normal random variable. 
+
+Substituting this back, we get the classic **Euler-Maruyama update rule**:
+\begin{equation}
+    X_{n+1} = X_n + \gamma b(X_n) + \sigma(X_n) \sqrt{\gamma} \, Z_{n+1}
+\end{equation}
+
+\section{The Crucial Contrast: Why the $\sqrt{\gamma}$ and $\gamma$ Scaling Matter}
+
+Students are often confused by the similarities and differences between the discrete update formulas of Stochastic Approximation and the Euler-Maruyama method. Let us place them side-by-side:
+\begin{align}
+    \text{\textbf{Euler-Maruyama (SDE Discretization):}} \quad &X_{n+1} = X_n + \gamma b(X_n) + \sigma(X_n) \sqrt{\gamma} \, Z_{n+1} \label{eq:em_formula} \\
+    \text{\textbf{Stochastic Approximation (SA):}} \quad &\theta_{n+1} = \theta_n + \gamma_n h(\theta_n) + \gamma_n \, \xi_n \label{eq:sa_formula}
+\end{align}
+
+\subsection{Why is the noise scaled by $\sqrt{\gamma}$ in Euler-Maruyama, but by $\gamma$ in SA?}
+This is the most critical question in stochastic analysis, and it highlights their completely opposite objectives:
+
+\subsubsection{1. Euler-Maruyama Preserves Noise in the Limit}
+In Euler-Maruyama, our goal is to **accurately reproduce** the continuous-time stochastic path of an SDE. The physical noise is a real, physical force (like the waves on the sailboat) that should not go away. 
+* The variance of the drift step $\gamma b(X_n)$ is proportional to $\gamma^2$.
+* The variance of the noise step $\sigma(X_n) \sqrt{\gamma} Z_{n+1}$ is proportional to $(\sqrt{\gamma})^2 = \gamma$.
+* As $\gamma \to 0$, the noise step variance $\gamma$ is infinitely larger than the drift step variance $\gamma^2$. This ensures that the noise remains active and does not vanish in the continuous-time limit, converging perfectly to a stochastic differential equation.
+
+\subsubsection{2. Stochastic Approximation Filters Noise Out}
+In Stochastic Approximation, our goal is to **destroy the noise** to find a single, deterministic, clean optimal parameter $\theta^*$ (like the harbor). 
+* The noise $\xi_n$ is an unwanted experimental nuisance (the cheap thermometer).
+* By scaling the noise term by $\gamma_n$ (instead of $\sqrt{\gamma_n}$), the variance of our step is proportional to $\gamma_n^2$.
+* Because $\sum \gamma_n^2 < \infty$, the accumulated noise variance over the infinite horizon is finite. As a result, the noise is systematically filtered out, and the parameter sequence converges to a deterministic point rather than a stochastic process.
+
+\begin{table}[H]
+\centering
+\caption{Comprehensive Comparison of Stochastic Updates}
+\label{tab:comparison}
+\begin{tabular}{lll}
+\toprule
+\textbf{Feature} & \textbf{Euler-Maruyama (SDE)} & \textbf{Stochastic Approximation (SA)} \\
+\midrule
+\textbf{Primary Goal} & Simulate continuous random paths & Find the deterministic root of $h(\theta)=0$ \\
+\textbf{Drift Step Scaling} & $\gamma$ (constant or variable) & $\gamma_n$ (diminishing, $\sum \gamma_n = \infty$) \\
+\textbf{Noise Step Scaling} & $\sqrt{\gamma}$ & $\gamma_n$ \\
+\textbf{Role of Noise} & Permanent, physical reality & Nuisance, to be filtered out \\
+\textbf{Continuous Limit} & Stochastic Differential Eq. (SDE) & Deterministic ODE ($\dot{\theta} = h(\theta)$) \\
+\textbf{Step size behavior} & Usually constant ($\gamma$) & Must decay ($\sum \gamma_n^2 < \infty$, e.g., $1/n$) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Pedagogical Conclusion}
+
+By contrasting Stochastic Approximation and the Euler-Maruyama method, we teach students a deep truth about stochastic analysis: **scaling dictates destiny**. 
+* If you scale noise by the square root of the time increment ($\sqrt{\Delta t}$), you preserve randomness, creating a continuous-time stochastic process (SDE).
+* If you scale noise by the time increment itself ($\Delta t$), you overpower it with the drift, creating a noise-filtered trajectory that converges to a deterministic continuous-time system (ODE).
+
+This realization demystifies algorithms ranging from Stochastic Gradient Descent (SGD) in machine learning to continuous-time reinforcement learning, equipping students with both intuitive analogies and rigorous mathematical foundations.
+
+\end{document}

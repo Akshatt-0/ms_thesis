@@ -1,0 +1,95 @@
+\documentclass[11pt]{article}
+\usepackage{amsmath, amssymb, amsthm}
+\usepackage{geometry}
+\usepackage{tcolorbox}
+\usepackage{microtype}
+\geometry{margin=1in}
+
+\title{\textbf{Foundations of Stochastic Approximation: \\ A Pedagogical Journey from Robbins-Monro to Euler-Maruyama}}
+\author{\textbf{Pedagogical Peer Instruction} \\ Exploring Noise as an Instructor}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+This document provides an intuitive breakdown of Stochastic Approximation (SA) algorithms. We explore the motivation behind SA as a solution to finding equilibrium in systems where measurements are corrupted by noise. Furthermore, we establish the mathematical bridge between discrete SA updates and continuous-time dynamics by viewing SA as an Euler-Maruyama discretization of an underlying Stochastic Differential Equation (SDE).
+\end{abstract}
+
+\section{The Intuition: The Shower Knob Analogy}
+
+Imagine you are in a hotel shower. You want the water temperature to be exactly $T^* = 38^\circ\text{C}$. However, the plumbing is old, and the temperature you feel changes randomly every second due to pressure fluctuations in the building.
+
+\begin{itemize}
+    \item \textbf{The Goal:} Find the knob position $\theta^*$ such that the average temperature $f(\theta^*) = T^*$.
+    \item \textbf{The Constraint:} You cannot see the internal pipes; you only know if the water \textit{currently} feels too hot or too cold.
+    \item \textbf{The Noise:} Even at the ``perfect'' position, one second of water might feel like $40^\circ\text{C}$ and the next like $36^\circ\text{C}$.
+\end{itemize}
+
+If you turn the knob violently back and forth based on every single splash of water, you will likely scald yourself or freeze. Instead, you learn to make \textbf{smaller and smaller adjustments} as you get closer to your desired comfort level. This is the heart of Stochastic Approximation.
+
+\section{The Source and Motivation: Why ``Stochastic''?}
+
+In traditional calculus, if we want to find the root of a function $h(\theta) = 0$, we might use Newton's method:
+\begin{equation}
+    \theta_{n+1} = \theta_n - [h'(\theta_n)]^{-1} h(\theta_n)
+\end{equation}
+But what if we don't have access to $h(\theta)$ directly? What if we only have access to a ``noisy oracle'' $Y_n = h(\theta_n) + \xi_{n+1}$, where $\xi_{n+1}$ is random noise with zero mean?
+
+\subsection{Robbins and Monro (1951)}
+Herbert Robbins and Sutton Monro pioneered the solution in 1951. Their motivation was simple: \textbf{learning through averaging}. They proposed an update rule that looks like a discrete physical system:
+\begin{equation}
+    \theta_{n+1} = \theta_n + a_n \left[ h(\theta_n) + \xi_{n+1} \right]
+\end{equation}
+where $\{a_n\}$ is a sequence of gain coefficients (step sizes). 
+
+\subsection{The Stability Motivation}
+To ensure the noise doesn't push us away forever, the step sizes must satisfy two critical properties:
+\begin{enumerate}
+    \item $\sum a_n = \infty$: The ``engine'' must have enough fuel to reach the goal no matter how far away it starts.
+    \item $\sum a_n^2 < \infty$: The ``adjustments'' must eventually become small enough that the variance of the noise $\xi_{n+1}$ is suppressed (the knob stops shaking).
+\end{enumerate}
+
+\section{The Numerical Lens: The Euler-Maruyama Method}
+
+As educators, we often transition from discrete algebra to continuous calculus to simplify complexity. In SA, we do the same. We view the discrete sequence $\{\theta_n\}$ as a ``shadow'' of a continuous path $\theta(t)$.
+
+\subsection{The ODE Method}
+If we ignore the noise for a moment, the SA update $\theta_{n+1} = \theta_n + a_n h(\theta_n)$ looks exactly like the \textbf{Euler Method} for solving an Ordinary Differential Equation (ODE):
+\begin{equation}
+    \dot{\theta}(t) = h(\theta(t))
+\end{equation}
+where $a_n$ acts as the time step $\Delta t$. If the ODE has a stable equilibrium at $\theta^*$, then the SA algorithm will ``flow'' toward it.
+
+\subsection{Reintroducing Noise: The SDE Perspective}
+When we keep the noise, the system becomes a \textbf{Stochastic Differential Equation (SDE)}:
+\begin{equation}
+    d\theta(t) = h(\theta(t)) dt + \sigma dW(t)
+\end{equation}
+where $W(t)$ is a Wiener process (Brownian motion). 
+
+\subsection{The Euler-Maruyama Link}
+The \textbf{Euler-Maruyama (EM) method} is the standard way to simulate SDEs on a computer. For a time step $\Delta t$, the EM update is:
+\begin{equation}
+    X_{t+\Delta t} = X_t + h(X_t) \Delta t + \sigma(X_t) \Delta W_t
+\end{equation}
+where $\Delta W_t \sim \mathcal{N}(0, \Delta t)$. 
+
+\begin{tcolorbox}[title=The Deep Connection]
+The Stochastic Approximation algorithm \textbf{is} an Euler-Maruyama discretization of an underlying SDE, but with a \textbf{decreasing time step} $a_n$. 
+\end{tcolorbox}
+
+\section{Why this Perspective Matters for Pedagogy}
+
+By teaching SA through the lens of Euler-Maruyama and SDEs, we give students three powerful mental models:
+\begin{enumerate}
+    \item \textbf{Directional Flow:} The mean field $h(\theta)$ tells us where the system \textit{wants} to go (the deterministic drift).
+    \item \textbf{Diffusion/Vibration:} The noise $\xi$ tells us how much the system \textit{shakes} around that path.
+    \item \textbf{Convergence as Freezing:} Decreasing $a_n$ is like ``cooling'' the system down. In the beginning, high $a_n$ allows the algorithm to explore and jump out of local traps (high temperature). Eventually, small $a_n$ freezes the algorithm at the root (absolute zero).
+\end{enumerate}
+
+\section{Conclusion}
+Stochastic Approximation is not just an optimization trick; it is a discrete simulation of a noisy physical process seeking equilibrium. By understanding it as an Euler-Maruyama step, we realize that we are simply guiding a random walk toward a deterministic truth.
+
+\end{document}

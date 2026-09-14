@@ -1,0 +1,7 @@
+ 1. Visualizing the Journey
+
+  The Value Function V(x) represents the cumulative difference between your reward and the long-run average reward f_bar over an infinite timeline starting at 0 from state x:
+
+   1                     Infinite Journey from time 0 to infinity
+   2    |===========================================================================>
+   

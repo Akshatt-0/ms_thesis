@@ -1,0 +1,64 @@
+\documentclass[11pt]{article}
+\usepackage{amsmath, amssymb, amsthm}
+\usepackage{geometry}
+\usepackage{microtype}
+\usepackage{enumitem}
+\geometry{margin=1in}
+
+\title{\textbf{Formal Review and Critique: \\ Recursive Asymptotic Variance Estimation in CTMC}}
+\author{\textbf{Thesis Defense Panelist} \\ MS Thesis Committee (August Review)}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\section*{Executive Summary}
+The proposed algorithm for estimating the asymptotic variance $\kappa(f)$ in a Continuous-Time Markov Chain (CTMC) setting is a logically sound extension of the discrete-time stochastic approximation (SA) framework. The pedagogical bridge provided in the derivation is commendable. However, for a formal MS thesis, the current draft exhibits several logical gaps, notation inconsistencies, and unaddressed stability concerns that must be rectified.
+
+\section{Scrutiny of Assumptions and Logical Gaps}
+
+\subsection{State Space Dimensionality Conflict}
+The document fluctuates between treating the state space $S$ as countable (Abstract) and finite (Algorithm 1 and Section 7).
+\begin{itemize}
+    \item \textbf{Concern:} The use of $1/S$ in the projection update $V_{k+1}(x) = V_k(x) - \alpha_k \delta_k / S$ implicitly assumes that $S$ is a finite integer representing $|S|$. In a countably infinite state space, this term is mathematically undefined.
+    \item \textbf{Requirement:} Explicitly state the assumption $|S| < \infty$ or generalize the projection operator $\Pi$ using the stationary expectation $\mathbb{E}_\pi[V]$ to handle the countable case.
+\end{itemize}
+
+\subsection{Stochastic Step-Size Stability}
+The algorithm introduces a holding-time weighted update: $\gamma_k = \alpha_k \tau_k$, where $\tau_k \sim \text{Exp}(q(X_k))$.
+\begin{itemize}
+    \item \textbf{Concern:} Standard SA theory (e.g., Borkar) relies on deterministic step-size sequences. Here, $\gamma_k$ is a \textit{random variable}. If the transition rates $q(x)$ are small (i.e., long-tailed holding times), the variance of the updates may explode.
+    \item \textbf{Challenge:} Provide a proof that the variance of the holding times $\tau_k$ is uniformly bounded across $S$ to satisfy the noise-suppression condition $\sum \mathbb{E}[\gamma_k^2] < \infty$.
+\end{itemize}
+
+\subsection{Coupled SA System Constraints}
+The derivation treats $c_1, c_2, c_3$ as arbitrary positive constants. In coupled linear systems (Agrawal et al., 2024), these constants are critical.
+\begin{itemize}
+    \item \textbf{Concern:} The tracking error of the value function $V_k \to V$ must be managed relative to the convergence of the stationary mean $\bar{f}_k$. You have not provided the ratio constraints or the eigenvalue analysis required to ensure the Hurwitz stability of the joint system.
+\end{itemize}
+
+\section{Methodological and Mathematical Clarity}
+
+\subsection{Initial Condition and Mixing Time Bias}
+The derivation of $\kappa(f)$ in Section 4 assumes stationarity ($X_0 \sim \pi$), yet the algorithm runs on a single trajectory starting from an arbitrary $X_0$.
+\begin{itemize}
+    \item \textbf{Requirement:} Address the "burn-in" period or initial bias. A formal thesis must quantify how the chain's mixing time influences the finite-sample error of the $\kappa_n$ estimate.
+\end{itemize}
+
+\subsection{The ``Invisible Diagonal'' Assumption}
+The pedagogical argument for the disappearance of the negative term in CTMC is based on the Lebesgue measure of the diagonal being zero.
+\begin{itemize}
+    \item \textbf{Scrutiny:} This holds only if the reward function $f(X_t)$ is integrated over piecewise constant paths (c\`adl\`ag). If the underlying process included a diffusion component (e.g., reflected Brownian motion), the quadratic variation would not be zero on the diagonal. You must explicitly limit your scope to pure-jump CTMCs.
+\end{itemize}
+
+\section{Notation and Formatting Inconsistencies}
+\begin{itemize}
+    \item \textbf{Standardization:} Standardize the use of boldface for vectors and matrices. Section 2 uses scalar notation ($QV(x)$), whereas Section 7 correctly uses vector-matrix notation ($A = \Pi D_\pi Q$). Consistency is mandatory for academic rigor.
+    \item \textbf{Jump Chain Clarification:} In Section 6.2, explicitly define $X_{k+1}$ as the state of the \textit{embedded jump chain} to avoid confusion with the continuous-time evolution between transition points.
+\end{itemize}
+
+\section*{Final Verdict}
+The algorithm is theoretically promising but mathematically underspecified. Addressing the stability of the \textbf{stochastic step-sizes} and providing \textbf{rigorous constraints for the constants $c_i$} are the highest priorities for the upcoming defense.
+
+\end{document}

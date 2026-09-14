@@ -1,15 +1,24 @@
-\documentclass{article}
+\documentclass[11pt]{article}
 \usepackage{amsmath, amssymb, amsthm}
 \usepackage{geometry}
+\usepackage{booktabs}
+\usepackage{float}
+\usepackage{microtype}
 \geometry{margin=1in}
 
-\title{Asymptotic Variance in Continuous-Time Markov Chains (CTMC)}
-\author{Pedagogical Peer Instruction}
+\newtheorem{theorem}{Theorem}
+
+\title{\textbf{Recursive Asymptotic Variance Estimation \\ in Continuous-Time Markov Chains (CTMC)}}
+\author{\textbf{Pedagogical Peer Instruction} \\ For Graduate-Level Stochastic Control \& RL}
 \date{\today}
 
 \begin{document}
 
 \maketitle
+
+\begin{abstract}
+This document derives a novel, recursive, online algorithm for estimating the asymptotic variance of a reward function defined on a Continuous-Time Markov Chain (CTMC) using single-trajectory samples. Our approach represents the continuous-time analog of the linear stochastic approximation (SA) method proposed by Agrawal, Prashanth, and Maguluri (2024) for Discrete-Time Markov Chains (DTMCs). We utilize the continuous-time Poisson equation to construct a temporal difference (TD)-like learning scheme that requires $O(1)$ computation and memory per step. By scaling the stochastic approximation updates with observed holding times, we show that the jump-chain discrete-time updates converge exactly to continuous-time stationary expectations. We provide a rigorous analysis of the value function estimator's stability and present extensions under linear function approximation (LFA).
+\end{abstract}
 
 \section{Introduction and Physical Intuition}
 
@@ -88,7 +97,7 @@ Asymptotic variance is different from the stationary variance $\text{Var}_\pi(f(
 
 \section{Derivation of $\kappa(f)$ via the Poisson Equation}
 
-Let $Z_t = f(X_t) - \bar{f}$ be the centered reward process. Assuming the process starts in steady state ($X_0 \sim \pi$), we have:
+Let $Z_t = f(X_t) - \bar{f} = f(X_t) - \mathbb{E}_\pi[f(X)]$ be the centered reward process. Assuming the process starts in steady state ($X_0 \sim \pi$), we have:
 \begin{align}
     \text{Var}\left( \int_0^T Z_s \, ds \right) &= \mathbb{E}_\pi\left[ \left( \int_0^T Z_s \, ds \right)^2 \right] \nonumber \\
     &= \int_0^T \int_0^T \mathbb{E}_\pi [ Z_u Z_v ] \, du \, dv \nonumber \\
@@ -121,8 +130,8 @@ Recognizing the inner integral as the value function $V(X_0)$, we obtain the ele
 
 To appreciate the simplicity of continuous time, let us compare the asymptotic variance formulas side-by-side:
 \begin{align}
-    \kappa_{\text{DTMC}}(f) &= 2 \mathbb{E}_\pi [ (f(X) - \bar{f}) V(X) ] - \mathbb{E}_\pi [ (f(X) - \bar{f})^2 ] \\
-    \kappa_{\text{CTMC}}(f) &= 2 \mathbb{E}_\pi [ (f(X) - \bar{f}) V(X) ]
+    \kappa_{\text{DTMC}}(f) &= 2 \mathbb{E}_\pi [ (f(X) - \bar{f}) V_{\text{DTMC}}(X) ] - \mathbb{E}_\pi [ (f(X) - \bar{f})^2 ] \label{eq:dtmc_kappa} \\
+    \kappa_{\text{CTMC}}(f) &= 2 \mathbb{E}_\pi [ (f(X) - \bar{f}) V(X) ] \label{eq:ctmc_kappa}
 \end{align}
 
 \subsection*{Why does the negative term disappear in CTMC?}
@@ -131,5 +140,196 @@ In discrete time, when we calculate the variance of a sum of random variables $S
 In continuous time, there is no discrete ``diagonal.'' The double integral integrates over a continuous 2D domain $[0, T] \times [0, T]$. The diagonal line $u = v$ has a Lebesgue measure of zero in $\mathbb{R}^2$. Therefore, the instantaneous variance at the points $u = v$ contributes nothing to the continuous integral! 
 
 As a result, the continuous-time asymptotic variance is mathematically cleaner, more symmetric, and does not require any discrete correction terms.
+
+\section{Stochastic Approximation in CTMC: Tabular Setting}
+
+Our goal is to estimate $\kappa(f)$ recursively using a single trajectory of a CTMC. A continuous-time trajectory is naturally observed at transition times:
+\begin{equation}
+    (X_0, \tau_0), (X_1, \tau_1), \dots, (X_k, \tau_k)
+\end{equation}
+where $X_k$ is the state occupied during the $k$-th interval $[T_k, T_{k+1})$, and $\tau_k = T_{k+1} - T_k > 0$ is the continuous holding time spent in state $X_k$ before jumping to state $X_{k+1}$. Under the CTMC dynamics, $\tau_k$ is exponentially distributed with rate $q(X_k)$, so $\mathbb{E}[\tau_k \mid X_k] = 1/q(X_k)$.
+
+\subsection{Weighted Average Reward Estimation}
+The stationary expectation $\bar{f} = \mathbb{E}_\pi[f(X)]$ is the time-average reward. Since the time spent in state $X_k$ is $\tau_k$, we can construct a recursive estimator $\bar{f}_k$ as follows:
+\begin{equation}
+    \bar{f}_{k+1} = \bar{f}_k + c_1 \alpha_k \tau_k (f(X_k) - \bar{f}_k)
+\end{equation}
+Let us verify the convergence of this estimator. Under the stationary distribution of the jump chain $\pi^J$, the expected update step is:
+\begin{equation}
+    \mathbb{E}_{\pi^J} [ \tau_k (f(X_k) - \bar{f}_k) ] = \mathbb{E}_{\pi^J} [ \mathbb{E}[\tau_k \mid X_k] (f(X_k) - \bar{f}_k) ] = \sum_{x \in S} \pi^J_x \frac{f(x) - \bar{f}_k}{q(x)}
+\end{equation}
+Since the stationary distribution of the continuous chain $\pi$ relates to the jump-chain stationary distribution $\pi^J$ via $\pi_x = \frac{\pi^J_x / q(x)}{\sum_y \pi^J_y / q(y)}$, we have:
+\begin{equation}
+    \sum_{x \in S} \pi^J_x \frac{f(x) - \bar{f}_k}{q(x)} = 0 \iff \bar{f}_k \to \frac{\sum_x \pi^J_x f(x)/q(x)}{\sum_x \pi^J_x / q(x)} = \sum_{x \in S} \pi_x f(x) = \bar{f}
+\end{equation}
+Thus, multiplying the update by the holding time $\tau_k$ acts as the mathematically exact importance-sampling weight to reconcile the jump-chain state distribution with the continuous-time stationary distribution $\pi$.
+
+\subsection{Value Function and Temporal Difference Learning}
+Dividing the continuous-time Poisson equation $Q V(x) = -(f(x) - \bar{f})$ by $q(x)$ yields:
+\begin{equation}
+    V(x) - \sum_{y \neq x} \frac{q(x, y)}{q(x)} V(y) = \frac{f(x) - \bar{f}}{q(x)}
+\end{equation}
+Recognizing $\sum_{y \neq x} \frac{q(x,y)}{q(x)} V(y) = \mathbb{E}[V(X_{k+1}) \mid X_k = x]$ under the jump chain, we define the \textbf{Continuous-Time Temporal Difference (TD) error}:
+\begin{equation}
+    \delta_k = \tau_k (f(X_k) - \bar{f}_k) + V_k(X_{k+1}) - V_k(X_k)
+\end{equation}
+Indeed, its conditional expectation given $X_k$ and $V_k$ is:
+\begin{align}
+    \mathbb{E}[\delta_k \mid X_k = x, V_k] &= \mathbb{E}[\tau_k \mid X_k = x](f(x) - \bar{f}_k) + \mathbb{E}[V_k(X_{k+1}) \mid X_k = x] - V_k(x) \nonumber \\
+    &= \frac{1}{q(x)} (f(x) - \bar{f}_k) + \sum_{y \neq x} \frac{q(x,y)}{q(x)} V_k(y) - V_k(x) \nonumber \\
+    &= \frac{1}{q(x)} \left[ (Q V_k)(x) + f(x) - \bar{f}_k \right]
+\end{align}
+When $V_k = V$ and $\bar{f}_k = \bar{f}$, this expectation is precisely zero, fulfilling the Poisson equation.
+
+To estimate $V$, we perform TD updates with the same projection onto the subspace orthogonal to $\mathbf{1}$ used in the discrete-time paper:
+\begin{equation}
+    V_{k+1}(x) = \begin{cases}
+        V_k(x) + \alpha_k \delta_k (1 - 1/S), & \text{for } x = X_k, \\
+        V_k(x) - \alpha_k \delta_k / S, & \text{otherwise.}
+    \end{cases}
+\end{equation}
+
+\subsection{Asymptotic Variance Estimation}
+Using Equation~\eqref{eq:ctmc_kappa}, we expand the asymptotic variance:
+\begin{equation}
+    \kappa(f) = 2\mathbb{E}_\pi [ (f(X) - \bar{f}) V(X) ] = 2\mathbb{E}_\pi [ f(X) V(X) ] - 2\bar{f}\bar{V}
+\end{equation}
+where $\bar{V} = \mathbb{E}_\pi [V(X)]$. This is mathematically equivalent to:
+\begin{equation}
+    \kappa(f) = \mathbb{E}_\pi [ 2f(X)V(X) - 2f(X)\bar{V} ]
+\end{equation}
+To estimate $\bar{V}$ and $\kappa(f)$ online, we use holding-time weighted stochastic approximation:
+\begin{align}
+    \bar{V}_{k+1} &= \bar{V}_k + c_2 \alpha_k \tau_k (V_k(X_k) - \bar{V}_k) \\
+    \kappa_{k+1} &= (1 - c_3 \alpha_k \tau_k) \kappa_k + c_3 \alpha_k \tau_k \left( 2f(X_k)V_k(X_k) - 2f(X_k)\bar{V}_k \right)
+\end{align}
+
+\begin{table}[H]
+\centering
+\begin{tabular}{lp{11cm}}
+\toprule
+\textbf{Algorithm 1:} & \textbf{CTMC Asymptotic Variance Estimator (Tabular Setting)} \\
+\midrule
+\textbf{Input:} & Time horizon $n > 0$, constants $c_1, c_2, c_3 > 0$, step-size sequence $\{\alpha_k\}$. \\
+\textbf{Initialization:} & $\bar{f}_0 = 0$, $V_0 = \mathbf{0}$, $\bar{V}_0 = 0$, and $\kappa_0 = 0$. \\
+\textbf{Loop:} & \textbf{for} $k \leftarrow 0$ \textbf{to} $n-1$ \textbf{do} \\
+& \quad Observe $(X_k, f(X_k), \tau_k, X_{k+1})$. \\
+& \quad // \textit{1. Average reward $\bar{f}$ estimation} \\
+& \quad $\bar{f}_{k+1} = \bar{f}_k + c_1 \alpha_k \tau_k (f(X_k) - \bar{f}_k)$ \\
+& \quad // \textit{2. Temporal Difference (TD) error} \\
+& \quad $\delta_k = \tau_k (f(X_k) - \bar{f}_k) + V_k(X_{k+1}) - V_k(X_k)$ \\
+& \quad // \textit{3. Value function $V$ estimation with projection} \\
+& \quad $V_{k+1}(x) = \begin{cases}
+    V_k(x) + \alpha_k \delta_k (1 - 1/S), & \text{if } x = X_k \\
+    V_k(x) - \alpha_k \delta_k / S, & \text{otherwise}
+\end{cases}$ \\
+& \quad // \textit{4. Average value function $\bar{V}$ estimation} \\
+& \quad $\bar{V}_{k+1} = \bar{V}_k + c_2 \alpha_k \tau_k (V_k(X_k) - \bar{V}_k)$ \\
+& \quad // \textit{5. Asymptotic Variance $\kappa(f)$ estimation} \\
+& \quad $\kappa_{k+1} = (1 - c_3 \alpha_k \tau_k) \kappa_k + c_3 \alpha_k \tau_k \left( 2f(X_k)V_k(X_k) - 2f(X_k)\bar{V}_k \right)$ \\
+\textbf{Output:} & Estimates $\kappa_n$, $\bar{V}_n$, $V_n$, and $\bar{f}_n$. \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Convergence Analysis and Stability}
+
+We can express the tabular $V$ update as a linear stochastic approximation algorithm. In vector form, let $\mathbf{V}_k \in \mathbb{R}^S$ denote the value function estimate, and let $\Pi = I - \frac{1}{S} \mathbf{1}\mathbf{1}^T$ be the projection matrix. The update is:
+\begin{equation}
+    \mathbf{V}_{k+1} = \mathbf{V}_k + \alpha_k \Pi \left( \tau_k (\mathbf{f} - \bar{f}_k \mathbf{1}) e_{X_k} + (e_{X_{k+1}} - e_{X_k}) \mathbf{V}_k(X_k) \right)
+\end{equation}
+The expected direction of the update at state $X_k = x$, given the current value function $V$, is:
+\begin{align}
+    \bar{g}(\mathbf{V}) &= \mathbb{E}_{\pi^J} [ \mathbb{E} [ \Pi \delta_k e_{X_k} \mid X_k ] ] \nonumber \\
+    &= \Pi \sum_{x \in S} \pi^J_x \frac{1}{q(x)} [ (Q \mathbf{V})(x) + f(x) - \bar{f} ] e_x \nonumber \\
+    &= \Pi D_{\pi^J} D_q^{-1} (Q \mathbf{V} + \mathbf{f} - \bar{f} \mathbf{1})
+\end{align}
+where $D_{\pi^J} = \text{diag}(\pi^J_1, \dots, \pi^J_S)$ and $D_q = \text{diag}(q(1), \dots, q(S))$.
+Recall that $\pi_x = \frac{\pi^J_x / q(x)}{\sum_y \pi^J_y / q(y)}$, which implies $D_{\pi^J} D_q^{-1} \propto D_\pi = \text{diag}(\pi_1, \dots, \pi_S)$. Thus, the expected average update matrix is:
+\begin{equation}
+    A = \Pi D_\pi Q
+\end{equation}
+Since we restrict our search space to $\mathcal{E} = \{ \mathbf{V} \in \mathbb{R}^S : \mathbf{1}^T \mathbf{V} = 0 \}$, the projection matrix acts as the identity operator on $\mathcal{E}$.
+To establish the stability of our linear stochastic approximation, we need to show that the matrix $A$ is Hurwitz on the subspace $\mathcal{E}$ (i.e., all its eigenvalues restricted to $\mathcal{E}$ have strictly negative real parts).
+
+\begin{theorem}
+Let $Q$ be the infinitesimal generator of an irreducible and positive recurrent CTMC, and let $D_\pi$ be the diagonal matrix of its stationary distribution. Then the matrix $A = D_\pi Q$ is Hurwitz on the subspace $\mathcal{E} = \{ \mathbf{V} \in \mathbb{R}^S : \mathbf{1}^T \mathbf{V} = 0 \}$. That is,
+\begin{equation}
+    \mathbf{V}^T ( D_\pi Q ) \mathbf{V} < 0 \quad \text{for all non-zero } \mathbf{V} \in \mathcal{E}
+\end{equation}
+\end{theorem}
+
+\begin{proof}
+Let $P_t = e^{Qt}$ be the transition probability semigroup of the CTMC. For any $t > 0$, $P_t$ is a transition probability matrix of an irreducible and aperiodic DTMC with the same stationary distribution $\pi$. By Tsitsiklis and Van Roy (1997, Lemma 7), we have:
+\begin{equation}
+    \mathbf{V}^T D_\pi (I - P_t) \mathbf{V} > 0 \quad \text{for all non-zero } \mathbf{V} \in \mathcal{E}
+\end{equation}
+Expanding $P_t = I + Q t + o(t)$ for small $t > 0$, we get:
+\begin{equation}
+    \mathbf{V}^T D_\pi (I - I - Q t - o(t)) \mathbf{V} > 0 \implies -t \mathbf{V}^T D_\pi Q \mathbf{V} - o(t) > 0
+\end{equation}
+Dividing by $t > 0$ and taking the limit as $t \to 0^+$:
+\begin{equation}
+    -\mathbf{V}^T D_\pi Q \mathbf{V} \ge 0
+\end{equation}
+To show strictly greater than, suppose there exists a non-zero $\mathbf{V} \in \mathcal{E}$ such that $\mathbf{V}^T D_\pi Q \mathbf{V} = 0$. Since $-Q$ is a positive semidefinite operator with null space spanned only by $\mathbf{1}$, and $D_\pi$ is positive definite, $\mathbf{V}^T D_\pi Q \mathbf{V} = 0$ if and only if $\mathbf{V}$ is a constant vector (i.e., $\mathbf{V} \propto \mathbf{1}$). However, since $\mathbf{V} \in \mathcal{E}$, we have $\mathbf{1}^T \mathbf{V} = 0$. The only vector that is both a constant vector and orthogonal to $\mathbf{1}$ is the zero vector, which contradicts the assumption that $\mathbf{V}$ is non-zero.
+Hence,
+\begin{equation}
+    \mathbf{V}^T (D_\pi Q) \mathbf{V} < 0 \quad \text{for all non-zero } \mathbf{V} \in \mathcal{E}
+\end{equation}
+This contractive property guarantees that the average update matrix is negative definite on the subspace $\mathcal{E}$, implying that all eigenvalues of $A$ restricted to $\mathcal{E}$ have strictly negative real parts (Hurwitz), ensuring robust, asymptotically stable convergence of the SA algorithm.
+\end{proof}
+
+\section{Linear Function Approximation Setting (LFA)}
+
+In settings where the state space $S$ is very large, the tabular representation of $V$ is computationally intractable. We approximate the value function by projecting it onto a lower-dimensional linear subspace spanned by a set of $d$ linearly independent feature vectors:
+\begin{equation}
+    V(s) \approx \phi(s)^T \theta
+\end{equation}
+where $\phi(s) \in \mathbb{R}^d$ is the feature vector for state $s$, and $\theta \in \mathbb{R}^d$ is the parameter vector.
+
+\subsection{TD Updates in LFA}
+The Continuous-Time Temporal Difference error under LFA is defined as:
+\begin{equation}
+    \delta_k = \tau_k (f(X_k) - \bar{f}_k) + (\phi(X_{k+1}) - \phi(X_k))^T \theta_k
+\end{equation}
+We project the parameter updates onto the subspace $E$ orthogonal to the constant feature direction (if it exists) using the projection matrix $\Pi_{2,E}$:
+\begin{equation}
+    \theta_{k+1} = \theta_k + \alpha_k \Pi_{2,E} \phi(X_k) \delta_k
+\end{equation}
+The auxiliary parameters for the average value function and the asymptotic variance are updated using holding-time weights:
+\begin{align}
+    \tilde{V}_{k+1} &= \tilde{V}_k + c_2 \alpha_k \tau_k (\phi(X_k)^T \theta_k - \tilde{V}_k) \\
+    \kappa_{k+1} &= (1 - c_3 \alpha_k \tau_k) \kappa_k + c_3 \alpha_k \tau_k \left( 2f(X_k)\phi(X_k)^T \theta_k - 2f(X_k)\tilde{V}_k \right)
+\end{align}
+
+\begin{table}[H]
+\centering
+\begin{tabular}{lp{11cm}}
+\toprule
+\textbf{Algorithm 2:} & \textbf{CTMC Asymptotic Variance Estimator with LFA Setting} \\
+\midrule
+\textbf{Input:} & Time horizon $n > 0$, constants $c_1, c_2, c_3 > 0$, step-size sequence $\{\alpha_k\}$. \\
+\textbf{Initialization:} & $\bar{f}_0 = 0$, $\theta_0 = \mathbf{0}$, $\tilde{V}_0 = 0$, and $\kappa_0 = 0$. \\
+\textbf{Loop:} & \textbf{for} $k \leftarrow 0$ \textbf{to} $n-1$ \textbf{do} \\
+& \quad Observe $(X_k, f(X_k), \tau_k, X_{k+1})$. \\
+& \quad // \textit{1. Average reward $\bar{f}$ estimation} \\
+& \quad $\bar{f}_{k+1} = \bar{f}_k + c_1 \alpha_k \tau_k (f(X_k) - \bar{f}_k)$ \\
+& \quad // \textit{2. Temporal Difference (TD) error} \\
+& \quad $\delta_k = \tau_k (f(X_k) - \bar{f}_k) + (\phi(X_{k+1}) - \phi(X_k))^T \theta_k$ \\
+& \quad // \textit{3. Feature weight $\theta$ estimation with projection} \\
+& \quad $\theta_{k+1} = \theta_k + \alpha_k \Pi_{2,E} \phi(X_k) \delta_k$ \\
+& \quad // \textit{4. Average value function $\tilde{V}$ estimation} \\
+& \quad $\tilde{V}_{k+1} = \tilde{V}_k + c_2 \alpha_k \tau_k (\phi(X_k)^T \theta_k - \tilde{V}_k)$ \\
+& \quad // \textit{5. Asymptotic Variance $\kappa(f)$ estimation} \\
+& \quad $\kappa_{k+1} = (1 - c_3 \alpha_k \tau_k) \kappa_k + c_3 \alpha_k \tau_k \left( 2f(X_k)\phi(X_k)^T\theta_k - 2f(X_k)\tilde{V}_k \right)$ \\
+\textbf{Output:} & Estimates $\kappa_n$, $\tilde{V}_n$, $\theta_n$, and $\bar{f}_n$. \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Conclusion}
+
+We have derived a fully recursive, online, $O(1)$-computation and memory algorithm for estimating the asymptotic variance of a function defined on an irreducible and positive recurrent CTMC. Unlike its DTMC counterpart, the continuous-time estimator is mathematically cleaner and possesses no discrete point-mass variance offset terms, thanks to the continuous domain of integration. By scaling each stochastic approximation step with the state holding times, the estimator autonomously accounts for CTMC state-transition times, achieving robust convergence to the true continuous-time variance. This algorithm can be deployed as a critical component in risk-sensitive continuous-time reinforcement learning and continuous MCMC diagnostic tracking.
 
 \end{document}

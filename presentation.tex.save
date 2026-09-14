@@ -1,0 +1,6 @@
+\documentclass[9pt,aspectratio=169]{beamer}
+
+% ---------- THEME ----------
+\usetheme{Madrid}
+\usecolortheme{whale}
+\setbeamertemplate{navigation

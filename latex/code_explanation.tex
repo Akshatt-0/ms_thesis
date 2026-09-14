@@ -1,0 +1,102 @@
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{amsmath, amssymb, amsthm}
+\usepackage{geometry}
+\usepackage{hyperref}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{bm}
+
+\geometry{margin=1in}
+
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{0.95,0.95,0.92}
+
+\lstdefinestyle{mystyle}{
+    backgroundcolor=\color{backcolour},   
+    commentstyle=\color{codegreen},
+    keywordstyle=\color{magenta},
+    numberstyle=\tiny\color{codegray},
+    stringstyle=\color{codepurple},
+    basicstyle=\ttfamily\footnotesize,
+    breakatwhitespace=false,         
+    breaklines=true,                 
+    captionpos=b,                    
+    keepspaces=true,                 
+    numbers=left,                    
+    numbersep=5pt,                  
+    showspaces=false,                
+    showstringspaces=false,
+    showtabs=false,                  
+    tabsize=2
+}
+
+\lstset{style=mystyle}
+
+\title{Implementation Breakdown: Recursive Asymptotic Variance Estimation for DTMCs}
+\author{MS Thesis Technical Documentation}
+\date{September 2026}
+
+\begin{document}
+
+\maketitle
+
+\section{Introduction}
+This document provides a technical explanation of the Python implementation (\texttt{src/simulate\_dtmc.py}) of the recursive stochastic approximation (SA) algorithm for estimating the asymptotic variance $\kappa(f)$ of a function $f$ defined on a Discrete-Time Markov Chain (DTMC). 
+
+The implementation is based on the research paper: \textit{"Markov Chain Variance Estimation: A Stochastic Approximation Approach"} (Agrawal et al., 2024).
+
+\section{Mathematical Foundations}
+Given an irreducible and aperiodic DTMC on a finite state space $\mathcal{S}$ with transition matrix $P$ and stationary distribution $\pi$, we define the stationary expectation of a bounded function $f: \mathcal{S} \to \mathbb{R}$ as $\bar{f} = \mathbb{E}_\pi[f(X)]$.
+
+\subsection{Asymptotic Variance $\kappa(f)$}
+The asymptotic variance is defined via the Central Limit Theorem for Markov Chains:
+\begin{equation}
+    \frac{\sum_{k=0}^{n-1} f(X_k) - n\bar{f}}{\sqrt{n}} \implies \mathcal{N}(0, \kappa(f)) \quad \text{as } n \to \infty
+\end{equation}
+The implementation uses a formulation involving the solution $V$ to the \textbf{Poisson Equation}:
+\begin{equation}
+    f - \bar{f}\mathbf{1} = V - PV
+\end{equation}
+Rearranging the terms, the script evaluates $\kappa(f)$ using the identity:
+\begin{equation}
+    \kappa(f) = \mathbb{E}_\pi[2f(X)V(X) - 2f(X)\bar{V} - f^2(X) + f(X)\bar{f}]
+\end{equation}
+where $\bar{V} = \mathbb{E}_\pi[V(X)]$.
+
+\section{Algorithm Implementation}
+The core of the simulation is the \texttt{TabularVarianceEstimator} class, which implements \textbf{Algorithm 1} from the paper.
+
+\subsection{The Update Logic}
+At each transition $(X_k, X_{k+1})$, the estimator performs four recursive $O(1)$ updates using a step-size $\alpha_k$:
+\begin{enumerate}
+    \item \textbf{Stationary Mean ($\bar{f}_k$)}: Updates the estimate of $\mathbb{E}_\pi[f]$.
+    \item \textbf{Value Function ($V_k$)}: Solves the Poisson equation. The code uses a compact vector update that preserves the orthogonality constraint $\mathbf{1}^T V_k = 0$.
+    \item \textbf{Stationary Mean of $V$ ($\bar{V}_k$)}: Tracks the average of the value function.
+    \item \textbf{Asymptotic Variance ($\kappa_k$)}: Aggregates the terms from the $\kappa(f)$ identity using linear SA.
+\end{enumerate}
+
+\section{Verification and Invariants}
+To ensure the simulation is correct, the implementation includes several verification mechanisms:
+
+\subsection{Analytical Ground Truth}
+The script includes a \texttt{compute\_analytical\_ground\_truth} function that solves the system exactly using matrix inversion and least squares. It cross-validates the result using two independent formulations of $\kappa(f)$:
+\begin{enumerate}
+    \item $\kappa(f) = 2\mathbb{E}_\pi[(f(X) - \bar{f})V(X)] - \mathbb{E}_\pi[(f(X) - \bar{f})^2]$
+    \item $\kappa(f) = \mathbb{E}_\pi[V^2(X)] - \mathbb{E}_\pi[(PV)^2(X)]$
+\end{enumerate}
+
+\subsection{Spectral Gap and Convergence Constants}
+The convergence of the algorithm depends on the spectral gap $\Delta_1$ of the symmetric part of $D_\pi(I-P)$. The function \texttt{compute\_theoretical\_constants} uses this gap to derive scale factors $c_1, c_2, c_3$ that satisfy the stability conditions derived in Theorem 2.1 of the paper.
+
+\subsection{Unit Testing}
+The \texttt{src/test\_simulate\_dtmc.py} suite verifies the \textbf{orthogonal conservation invariant}. It mathematically proves that for any update $V_{k+1}$, the property $\sum_{i \in \mathcal{S}} V_{k+1}(i) = 0$ is preserved exactly (within machine precision) without requiring an explicit projection step at every iteration.
+
+\section{Usage and Visualization}
+The simulation generates a convergence plot (\texttt{src/convergence\_plot.png}) comparing diminishing step-sizes (guaranteed $O(1/n)$ convergence) against constant step-sizes (faster initial descent but higher asymptotic bias).
+
+\end{document}
